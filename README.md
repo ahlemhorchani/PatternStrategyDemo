@@ -69,5 +69,4 @@ Le rendu et les mouvements sont synchronisés via **JavaScript interop** (`IJSRu
 
 ---
 
-## 🔹 Diagramme UML du patron Strategy
 
