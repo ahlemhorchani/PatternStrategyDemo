@@ -1,0 +1,426 @@
+@page "/drone"
+@inject IJSRuntime JSRuntime
+@using DemoStrategy3D.Strategy
+@implements IAsyncDisposable
+
+<style>
+    :root {
+        --primary: #00c6ff;
+        --primary-dark: #0072ff;
+        --secondary: #6a11cb;
+        --dark: #0f1419;
+        --darker: #0a0e13;
+        --light: #f0f8ff;
+        --gray: #2a2f35;
+        --success: #00d26a;
+        --warning: #ffaa00;
+        --danger: #ff3860;
+    }
+    
+    .drone-container {
+        background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+        color: var(--light);
+        min-height: 100vh;
+        padding: 20px;
+    }
+    
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: rgba(15, 20, 25, 0.7);
+        border-radius: 16px;
+        border: 1px solid var(--gray);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+    }
+    
+    h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        display: inline-block;
+    }
+    
+    .drone-icon {
+        font-size: 2rem;
+        margin-left: 10px;
+        vertical-align: middle;
+    }
+    
+    .subtitle {
+        color: #a0aec0;
+        font-size: 1.1rem;
+    }
+    
+    .dashboard {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    @@media (max-width: 768px) {
+        .dashboard {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .control-panel, .status-panel {
+        background: rgba(15, 20, 25, 0.7);
+        border-radius: 16px;
+        padding: 25px;
+        border: 1px solid var(--gray);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+    }
+    
+    .panel-title {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+    }
+    
+    .panel-title i {
+        margin-right: 10px;
+    }
+    
+    .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+    
+    .key {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+        min-width: 80px;
+    }
+    
+    .key-button {
+        width: 70px;
+        height: 70px;
+        border-radius: 12px;
+        background: linear-gradient(145deg, var(--gray), #23282e);
+        border: 1px solid #3a4048;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+        margin-bottom: 8px;
+    }
+    
+    .key-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .key-button.active {
+        background: linear-gradient(145deg, var(--primary-dark), var(--primary));
+        color: white;
+        box-shadow: 0 0 15px rgba(0, 198, 255, 0.5);
+    }
+    
+    .key-label {
+        font-size: 0.9rem;
+        color: #a0aec0;
+    }
+    
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 12px 15px;
+        background: rgba(42, 47, 53, 0.5);
+        border-radius: 10px;
+        border-left: 4px solid var(--primary);
+    }
+    
+    .status-icon {
+        margin-right: 12px;
+        font-size: 1.2rem;
+        color: var(--primary);
+    }
+    
+    .status-text {
+        flex: 1;
+    }
+    
+    .status-value {
+        font-weight: bold;
+        color: var(--primary);
+    }
+    
+    .data-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    
+    .data-item {
+        background: rgba(42, 47, 53, 0.5);
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .data-label {
+        font-size: 0.9rem;
+        color: #a0aec0;
+        margin-bottom: 5px;
+    }
+    
+    .data-value {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+    
+    .visualization {
+        background: rgba(15, 20, 25, 0.7);
+        border-radius: 16px;
+        padding: 25px;
+        border: 1px solid var(--gray);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+        margin-bottom: 20px;
+    }
+    
+    #three-container {
+        width: 100%;
+        height: 500px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #1a1a1a;
+        border: 1px solid var(--gray);
+        outline: none;
+    }
+    
+    .instructions {
+        background: rgba(15, 20, 25, 0.7);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--gray);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+        margin-top: 20px;
+    }
+    
+    .instructions h3 {
+        color: var(--primary);
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .instructions h3 i {
+        margin-right: 10px;
+    }
+    
+    .instructions p {
+        margin-bottom: 10px;
+        line-height: 1.5;
+    }
+    
+    footer {
+        text-align: center;
+        margin-top: 30px;
+        padding: 20px;
+        color: #718096;
+        font-size: 0.9rem;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div class="drone-container">
+    <div class="container">
+        <header>
+            <h1>Contrôle du Drone <span class="drone-icon">🛸</span></h1>
+            <p class="subtitle">Interface de contrôle en temps réel avec visualisation 3D</p>
+        </header>
+        
+        <div class="dashboard">
+            <div class="control-panel">
+                <h3 class="panel-title"><i class="fas fa-gamepad"></i> Contrôles</h3>
+                <div class="controls">
+                    <div class="key">
+                        <div class="key-button @(_activeKey == "M" ? "active" : "")">M</div>
+                        <div class="key-label">Avancer</div>
+                    </div>
+                    <div class="key">
+                        <div class="key-button @(_activeKey == "L" ? "active" : "")">L</div>
+                        <div class="key-label">Tourner à Gauche</div>
+                    </div>
+                    <div class="key">
+                        <div class="key-button @(_activeKey == "R" ? "active" : "")">R</div>
+                        <div class="key-label">Tourner à Droite</div>
+                    </div>
+                </div>
+                
+                <div class="status-indicator">
+                    <div class="status-icon"><i class="fas fa-satellite-dish"></i></div>
+                    <div class="status-text">État de connexion:</div>
+                    <div class="status-value">@_droneStatus</div>
+                </div>
+            </div>
+            
+            <div class="status-panel">
+                <h3 class="panel-title"><i class="fas fa-chart-line"></i> Télémétrie</h3>
+                <div class="data-grid">
+                    <div class="data-item">
+                        <div class="data-label">Position X</div>
+                        <div class="data-value">@(_dronePosition.X.ToString("F2"))</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Position Z</div>
+                        <div class="data-value">@(_dronePosition.Z.ToString("F2"))</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Rotation</div>
+                        <div class="data-value">@((_droneRotation * 180/Math.PI).ToString("F1"))°</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Altitude</div>
+                        <div class="data-value">5.2m</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="visualization">
+            <h3 class="panel-title"><i class="fas fa-globe"></i> Visualisation 3D</h3>
+            <div id="three-container" 
+                 tabindex="0" 
+                 @onkeydown="HandleKeyDown"
+                 style="width:100%; height:500px; border:1px solid #444; background:#1a1a1a;">
+                @if (!_isLoaded)
+                {
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #718096;">
+                        <div style="text-align: center;">
+                            <i class="fas fa-cube" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                            <p>Visualisation 3D du drone</p>
+                            <p style="font-size: 0.9rem; margin-top: 10px;">Cliquez ici pour activer les contrôles clavier</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3><i class="fas fa-info-circle"></i> Instructions</h3>
+            <p>Utilisez les touches clavier : <strong>M</strong> (Avancer), <strong>L</strong> (Tourner à Gauche), <strong>R</strong> (Tourner à Droite)</p>
+            <p>Cliquez sur la zone de visualisation 3D pour activer les contrôles clavier.</p>
+            <p>Les données de télémétrie sont mises à jour en temps réel.</p>
+        </div>
+        
+        <footer>
+            <p>Interface de contrôle de drone | Design futuriste © 2023</p>
+        </footer>
+    </div>
+</div>
+
+@code {
+    private DroneContext _drone = new DroneContext();
+    private DotNetObjectReference<Drone>? _objRef;
+    private (double X, double Z) _dronePosition = (0, 0);
+    private double _droneRotation = 0;
+    private string _droneStatus = "Chargement du drone...";
+    private string _activeKey = "";
+    private bool _isLoaded = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _objRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("threeJSInterop.initScene", "three-container", _objRef);
+
+            // Mettre le focus sur le div pour que le clavier fonctionne
+            await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('three-container').focus()");
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (_droneStatus != "Drone prêt !") return; // Ignorer avant chargement
+
+        _activeKey = e.Key.ToUpper();
+        StateHasChanged();
+
+        switch (_activeKey)
+        {
+            case "M":
+                await SetStrategyAndExecute(StrategyType.MoveForward);
+                break;
+            case "L":
+                await SetStrategyAndExecute(StrategyType.TurnLeft);
+                break;
+            case "R":
+                await SetStrategyAndExecute(StrategyType.TurnRight);
+                break;
+        }
+
+        // Réinitialiser la touche active après un court délai
+        await Task.Delay(300);
+        _activeKey = "";
+        StateHasChanged();
+    }
+
+    private async Task SetStrategyAndExecute(StrategyType type)
+    {
+        _drone.SetDirectionStrategy(type);
+        await _drone.MoveAsync(JSRuntime);
+        await UpdateDroneState();
+    }
+
+    private async Task UpdateDroneState()
+    {
+        await Task.Delay(1);
+    }
+
+    [JSInvokable]
+    public void UpdateDronePosition(double x, double z, double rotation)
+    {
+        _dronePosition = (x, z);
+        _droneRotation = rotation;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnDroneLoaded()
+    {
+        _droneStatus = "Drone prêt !";
+        _isLoaded = true;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnDroneLoadError(string error)
+    {
+        _droneStatus = $"Erreur de chargement : {error}";
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _objRef?.Dispose();
+    }
+}
