@@ -69,4 +69,16 @@ Le rendu et les mouvements sont synchronisés via **JavaScript interop** (`IJSRu
 
 ---
 
+## Restaurer les packages NuGet
 
+dotnet restore
+
+
+## Lancer le projet
+
+dotnet run
+
+
+## Ouvrir le navigateur sur
+
+https://localhost:5001/drone
